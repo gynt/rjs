@@ -13,7 +13,8 @@
 #   Check Package:             'Ctrl + Shift + E'
 #   Test Package:              'Ctrl + Shift + T'
 
-
+#hide for now
+local({
 
 setupDevTools <- function() {
   tryCatch(library(devtools), error = function(e){
@@ -44,3 +45,5 @@ setupNodeJS <- function() {
   setupDevTools()
   setupInstallR()
 }
+
+})

@@ -13,3 +13,4 @@ a$eval("c")
 a$eval("console.log('hello!afwafawfaw')")
 
 a$eval("var fs = require('fs'); undefined;")
+

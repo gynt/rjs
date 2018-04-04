@@ -8,7 +8,9 @@ Save the following server in example.js:
 var vm = require('vm');
 
 
-function Console() {
+function Console(onLog) {
+
+  this.onLog = onLog;
 
   this.init = this.reset = function() {
     this.stdout = "";
@@ -20,14 +22,17 @@ function Console() {
 
   this.log = function(text) {
     this.stdout += text + "\n";
+    if(this.onLog!==undefined) {
+      this.onLog(text);
+    }
   };
 
   this.err = function(text) {
-    this.stdout += text + "\n";
+    this.log(text);
   };
 
   this.warn = function(text) {
-    this.stdout += text + "\n";
+    this.log(text);
   };
 
   this.dump = function() {
@@ -40,9 +45,9 @@ function Console() {
 
 var sandboxes = {};
 
-function createSandbox() {
+function createSandbox(console) {
   return {
-    console: new Console(),
+    console: console,
     require: require,
     exports: exports,
     module: module
@@ -120,14 +125,27 @@ var server = net.createServer(function(socket) {
 
 	socket.on('end', function() {
 	  console.log("CLIENT DISCONNECTED");
+	  delete clients[socket]
+	  delete sandboxes[socket]
 	});
+
+	socket.on('error', function(exc) {
+	  console.log("CLIENT DISCONNECTED: " + exc);
+	  delete clients[socket]
+	  delete sandboxes[socket]
+	})
 
 	socket.on('data', function(data) {
 	  //console.log("RECEIVING DATA: " + data);
 
 	  if(!clients[socket]) {
 	    clients[socket] = new PacketReader();
-	    sandboxes[socket] = createSandbox();
+
+	    sandboxes[socket] = createSandbox(new Console(function(text){
+	      var out = JSON.stringify({output:text});
+	      socket.write(out.length.toString()+";"+out);
+	    }));
+
 	    createContext(sandboxes[socket]);
 	  }
 
@@ -157,11 +175,13 @@ var server = net.createServer(function(socket) {
       error = err.message;
   	}
 
-	  socket.write(JSON.stringify({
+  	var out = JSON.stringify({
 	    result:result,
 	    error:error,
-	    output:vm.runInContext("console.dump()", sandbox)
-	  }), () => {
+	    //output:vm.runInContext("console.dump()", sandbox)
+	  });
+
+	  socket.write(out.length.toString() + ";" + out, () => {
 	    //console.log("DONE WRITING");
 	  });
 	});

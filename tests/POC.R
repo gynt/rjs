@@ -1,16 +1,23 @@
 
+server <- rjs.server.start()
 
-a <- rjs::rjs.session.create()
+session <- rjs::rjs.session.create()
 
-a$eval("a=3")
+session$eval("a=3")
 
-a$eval("a")
+session$eval("a")
 
-a$assign("df",mtcars)
+session$assign("df",mtcars)
 
-a$eval("c")
+session$assign("message","hello world!")
 
-a$eval("console.log('hello!afwafawfaw')")
+session$get("df")
 
-a$eval("var fs = require('fs'); undefined;")
+session$get("message")
+
+session$eval("c")
+
+session$eval("console.log('hello!afwafawfaw')")
+
+session$eval("var fs = require('fs');")
 

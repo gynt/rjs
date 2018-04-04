@@ -1,10 +1,30 @@
 
-
-
+rjs.server.start <- function(path=Sys.which("node"), invisible = FALSE) {
+  filepath <- system.file("server.js", package = "rjs")
+  fullpath <- paste(path, filepath, sep=" ")
+  system(fullpath, wait=FALSE, invisible=invisible)
+}
 
 rjs.session.create <- function(host="localhost", port = 1337) {
 
+  sh <- function() {
+    savehistory(".rjs_history")
+  }
+
+  lh <- function() {
+    loadhistory(".rjs_history")
+  }
+
+  wh <- function(line) {
+    write(line, ".rjs_history", append = TRUE)
+  }
+
+  ch <- function() {
+    file.remove(".rjs_history")
+  }
+
   packet.reader <- function() {
+
     private <- environment()
 
 
@@ -92,7 +112,7 @@ rjs.session.create <- function(host="localhost", port = 1337) {
       close.socket(private$socket)
     }
 
-    private$eval <- function(line, raw = FALSE, intermediate.output=TRUE) {
+    private$eval <- function(line, raw = FALSE, intermediate.output=TRUE, interactive=FALSE) {
       private$send(line)
       if(raw) {
         return(private$receive())
@@ -117,7 +137,10 @@ rjs.session.create <- function(host="localhost", port = 1337) {
             }
           }
           if("result" %in% names(result)) {
-            return(result$result)
+            if(interactive) {
+              return(result$result)
+            }
+            return(invisible())
           }
           if(intermediate.output==FALSE) {
             break
@@ -133,7 +156,42 @@ rjs.session.create <- function(host="localhost", port = 1337) {
     }
 
     private$get <- function(name) {
-      private$eval(name)
+      val <- private$eval(paste0("JSON.stringify(",name,")"), interactive=TRUE)
+      if(!is.null(val)) {
+        return(jsonlite::fromJSON(val))
+      }
+      invisible()
+    }
+
+    private$set <- function(name, value) {
+      private$eval(paste(name,"=",jsonlite::toJSON(value),";", sep=" "))
+    }
+
+    private$console <- function() {
+
+      savehistory()
+
+      wh("")
+      lh()
+
+      while(TRUE) {
+        input <- readline("console > ")
+        if(input=="exit") {
+          break
+        }
+        if(input=="") {
+          next
+        }
+        wh(input)
+        #sh()
+        lh()
+        result <- private$eval(input, interactive=TRUE)
+        cat(result)
+      }
+
+      ch()
+      loadhistory()
+
     }
 
 
@@ -142,6 +200,4 @@ rjs.session.create <- function(host="localhost", port = 1337) {
 
   structure(environment(), class=c("rjs.session", "environment"))
 }
-
-
 

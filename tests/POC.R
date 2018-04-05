@@ -1,13 +1,16 @@
 
-server <- rjs.server.start()
+server <- rjs.server()
 
-session <- rjs::rjs.session.create()
+status <- server$start()
+
+session <- server$session()
 
 session$eval("a=3")
 
 session$eval("a")
 
 session$assign("df",mtcars)
+session$assign("df",mtcars, dataframe="values")
 
 session$assign("message","hello world!")
 

@@ -1,11 +1,44 @@
 
-rjs.server.start <- function(path=Sys.which("node"), invisible = FALSE) {
-  filepath <- system.file("server.js", package = "rjs")
-  fullpath <- paste(path, filepath, sep=" ")
-  system(fullpath, wait=FALSE, invisible=invisible)
+rjs.server <- function(host="127.0.0.1", port = 1337, node_path = Sys.which("node")) {
+
+  this <- environment()
+
+  this$host <- host
+  this$port <- port
+
+  this$server_file <-system.file("server.js", package = "rjs")
+
+  if(nchar(this$server_file)==0) {
+    stop("Could not find server.js")
+  }
+
+  this$node_path <- Sys.which("node")
+
+  this$start <- function(path=Sys.which("node"), invisible = FALSE) {
+
+    fullpath <- paste(path, "-e", paste0("\"","require('",this$server_file,"')(this, '", this$host,"', ",this$port,");","\"",sep=""), sep=" ")
+    system(fullpath, wait=FALSE, invisible=invisible)
+  }
+
+  this$stop <- function() {
+    s <- rjs.session.create()
+    s <- rjs.session.eval("quit()")
+    s <- rjs.session.close()
+  }
+
+  this$session <- function() {
+    return(rjs.session.create(this$host, this$port))
+  }
+
+  this
+
 }
 
-rjs.session.create <- function(host="localhost", port = 1337) {
+rjs.start <- function() {
+  rjs.server()$start()
+}
+
+rjs.session.create <- function(host="127.0.0.1", port = 1337) {
 
   sh <- function() {
     savehistory(".rjs_history")
@@ -151,20 +184,20 @@ rjs.session.create <- function(host="localhost", port = 1337) {
       }
     }
 
-    private$assign <- function(name, value) {
-      private$eval(paste("var",name,"=",jsonlite::toJSON(value),";", sep=" "))
+    private$assign <- function(name, value, ...) {
+      private$eval(paste("var",name,"=",jsonlite::toJSON(value, ...),";", sep=" "))
     }
 
-    private$get <- function(name) {
+    private$get <- function(name, ...) {
       val <- private$eval(paste0("JSON.stringify(",name,")"), interactive=TRUE)
       if(!is.null(val)) {
-        return(jsonlite::fromJSON(val))
+        return(jsonlite::fromJSON(val, ...))
       }
       invisible()
     }
 
-    private$set <- function(name, value) {
-      private$eval(paste(name,"=",jsonlite::toJSON(value),";", sep=" "))
+    private$set <- function(name, value, ...) {
+      private$eval(paste(name,"=",jsonlite::toJSON(value, ...),";", sep=" "))
     }
 
     private$console <- function() {
